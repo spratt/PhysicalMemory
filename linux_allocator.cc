@@ -11,7 +11,6 @@ int main() {
               << ", nframes = " << nframes << std::endl;
     
     LinuxAllocator linuxall(nframes);
-    if(p <= 4) linuxall.set_debug(true);
     
     std::cout << "\tInitializing..." << std::flush;
     linuxall.init();

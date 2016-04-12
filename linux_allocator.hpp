@@ -1,9 +1,7 @@
 #ifndef LINUX_ALLOCATOR_HPP
 #define LINUX_ALLOCATOR_HPP
 
-#include <iostream>
 #include <vector>
-#include <sstream>
 #include <cmath>
 #include <cassert>
 #include "frame_allocator.hpp"
@@ -15,8 +13,6 @@ public:
 
 class LinuxAllocator : public FrameAllocator {
 protected:
-  bool debug;
-  size_t nallocs;
   std::vector<LinuxPage> pages;
   std::vector<LinuxPage*> order;
   size_t max_order;
@@ -48,13 +44,9 @@ protected:
 public:
   LinuxAllocator(size_t n) : max_order(ceil(log2(n))),
                              pages(pow(2, ceil(log2(n)))),
-                             order(ceil(log2(n)) + 1),
-                             nallocs(0),
-                             debug(false)
+                             order(ceil(log2(n)) + 1)
   {}
 
-  void set_debug(bool d) { debug = d; }
-  
   virtual void init() {
     // initialize pages
     for(size_t i = 0; i < pages.size(); ++i) {
@@ -100,18 +92,14 @@ public:
       }
 
       set_allocated(first);
-      ++nallocs;
       return *first;
     }
-    std::stringstream ss;
-    ss << "OOM after " << nallocs << "/" << pages.size() << " allocations";
-    throw ss.str();
+    throw "OOM";
   }
   virtual Page& alloc() {
     return allocate(0);
   }
   virtual void free(Page& p) {
-    //if(debug) std::cout << "free(" << p.padd << ")..." << std::endl;
     LinuxPage* ptr = &((LinuxPage&)p);
     
     // merge as much as possible
@@ -119,7 +107,6 @@ public:
       size_t buddy_index = get_buddy(ptr->padd, ptr->order);
       LinuxPage& buddy = pages[buddy_index];
       if(is_allocated(buddy)) break;
-      //if(debug) std::cout << "Trying merge(" << ptr->padd << "," << buddy_index << ")..." << std::endl;
       
       // remove page from its list
       if(buddy.next != NULL)
@@ -128,7 +115,6 @@ public:
         buddy.prev->next = buddy.next;
       else {
         assert(order[buddy.order] == &buddy);
-        //if(debug) std::cout << "first on list..." << std::endl;
         order[buddy.order] = (LinuxPage*)buddy.next;
       }
       
@@ -137,19 +123,14 @@ public:
         ptr = &buddy;
       ++(ptr->order);
     }
-    //if(debug) std::cout << "done merge..." << std::endl;
     
     // add to current order
     ptr->prev = NULL;
     ptr->next = order[ptr->order];
     order[ptr->order] = ptr;
     if(ptr->next != NULL) {
-      //if(debug) std::cout << "setting prev pointer on next..." << std::endl;
       ptr->next->prev = ptr;
     }
-    --nallocs;
-
-    //if(debug) std::cout << "...free!" << std::endl;
   }
 };
 
