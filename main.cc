@@ -3,7 +3,9 @@
 #include <iomanip>
 #include <vector>
 #include <chrono>
+#include <cstdlib>
 #include "bsd_allocator.hpp"
+#include "linux_allocator.hpp"
 
 const size_t KB = 1024;
 const size_t MB = KB * KB;
@@ -27,7 +29,12 @@ void test_allocator(const char* name, FrameAllocator& all) {
     // alloc
     start = std::chrono::high_resolution_clock::now();
     for(size_t i = 0; i < NPAGES; ++i) {
-      allocs.push_back(&all.alloc());
+      try {
+        allocs.push_back(&all.alloc());
+      } catch(std::string s) {
+        std::cout << s << std::endl;
+        exit(-1);
+      }
     }
     end = std::chrono::high_resolution_clock::now();
     diff = end - start;
@@ -52,6 +59,10 @@ void test_allocator(const char* name, FrameAllocator& all) {
 
 int main() {
   std::cout << "allocator,init,allocate,free" << std::endl;
+  {
+    LinuxAllocator linuxall(NPAGES);
+    test_allocator("linux", linuxall);
+  }
   {
     BSDAllocator bsdall(NPAGES);
     test_allocator("bsd", bsdall);
