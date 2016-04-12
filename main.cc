@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include "bsd_allocator.hpp"
 #include "linux_allocator.hpp"
+#include "bitmap_allocator.hpp"
 
 const size_t KB = 1024;
 const size_t MB = KB * KB;
@@ -59,6 +60,10 @@ void test_allocator(const char* name, FrameAllocator& all) {
 
 int main() {
   std::cout << "allocator,init,allocate,free" << std::endl;
+  {
+    BitmapAllocator<NPAGES> bitmapall;
+    test_allocator("bitmap", bitmapall);
+  }
   {
     LinuxAllocator linuxall(NPAGES);
     test_allocator("linux", linuxall);

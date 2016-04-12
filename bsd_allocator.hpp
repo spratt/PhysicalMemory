@@ -4,12 +4,18 @@
 #include <vector>
 #include "frame_allocator.hpp"
 
+class BSDPage : public Page {
+public:
+  BSDPage* next;
+  BSDPage* prev;
 
+  BSDPage() : next(NULL), prev(NULL) {}
+};
 
 class BSDAllocator : public FrameAllocator {
 protected:
-  std::vector<Page> pages;
-  Page* head;
+  std::vector<BSDPage> pages;
+  BSDPage* head;
   
 public:
   BSDAllocator(size_t n) : pages(n) {}
@@ -29,7 +35,7 @@ public:
 
   virtual Page& alloc() {
     if(head == NULL) throw "Cannot allocate from empty list";
-    Page& ret = *head;
+    BSDPage& ret = *head;
     if(head->next != NULL) head->next->prev = head->prev;
     if(head->prev != NULL) head->prev->next = head->next;
     head = head->next;
@@ -39,9 +45,10 @@ public:
   }
 
   virtual void free(Page& p) {
-    p.next = head;
-    if(head != NULL) p.prev = head->prev;
-    head = &p;
+    BSDPage& bp = (BSDPage&)p;
+    bp.next = head;
+    if(head != NULL) bp.prev = head->prev;
+    head = &bp;
   }
 };
 

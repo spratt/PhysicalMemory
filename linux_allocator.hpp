@@ -9,6 +9,8 @@
 class LinuxPage : public Page {
 public:
   size_t order;
+  LinuxPage* next;
+  LinuxPage* prev;
 };
 
 class LinuxAllocator : public FrameAllocator {

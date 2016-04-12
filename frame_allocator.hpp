@@ -6,8 +6,6 @@ class Page;
 class Page {
 public:
   uint64_t padd;
-  Page* next;
-  Page* prev;
 };
 
 // Define a standard interface
