@@ -8,27 +8,18 @@
 #include "linux_allocator.hpp"
 #include "bitmap_allocator.hpp"
 
-const size_t KB = 1024;
-const size_t MB = KB * KB;
-const size_t GB = MB * KB;
-const size_t NPAGES = (16 * GB) / (4 * KB);
-
-void test_allocator(const char* name, FrameAllocator& all) {
+void test_allocator(FrameAllocator& all, size_t NPAGES) {
   const size_t trials = 30;
 
   std::vector<Page*> allocs;
   
-  double total_init = 0.0, total_alloc = 0.0, total_free = 0.0;
+  double total_alloc = 0.0, total_free = 0.0;
   for(size_t trial = 0; trial < trials; ++trial) {
     // Init
-    auto start = std::chrono::high_resolution_clock::now();
     all.init();
-    auto end = std::chrono::high_resolution_clock::now();
-    auto diff = end - start;
-    total_init += diff.count();
 
     // alloc
-    start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
     for(size_t i = 0; i < NPAGES; ++i) {
       try {
         allocs.push_back(&all.alloc());
@@ -37,8 +28,8 @@ void test_allocator(const char* name, FrameAllocator& all) {
         exit(-1);
       }
     }
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
+    auto end = std::chrono::high_resolution_clock::now();
+    auto diff = end - start;
     total_alloc += diff.count();
 
     // Free
@@ -52,25 +43,43 @@ void test_allocator(const char* name, FrameAllocator& all) {
     total_free += diff.count();
   }
   double total_trials = NPAGES * trials;
-  std::cout << name << std::setprecision(2) << std::fixed
-            << "," << (total_init / trials)
+  std::cout << std::setprecision(2) << std::fixed
             << "," << (total_alloc / total_trials)
-            << "," << (total_free / total_trials) << std::endl;
+            << "," << (total_free / total_trials) << std::flush;
 }
 
+/******************************************************************************/
+// x^n
+// By Alexandre Daigle
+template <std::size_t X, std::size_t N>
+struct pow_t {
+    static constexpr std::size_t value = X * pow_t<X, N-1>::value;
+};
+
+template<std::size_t X>
+struct pow_t<X, 0> {
+    static constexpr std::size_t value = 1;
+};
+/******************************************************************************/
+
 int main() {
-  std::cout << "allocator,init,allocate,free" << std::endl;
-  {
-    BitmapAllocator<NPAGES> bitmapall;
-    test_allocator("bitmap", bitmapall);
-  }
-  {
-    LinuxAllocator linuxall(NPAGES);
-    test_allocator("linux", linuxall);
-  }
-  {
-    BSDAllocator bsdall(NPAGES);
-    test_allocator("bsd", bsdall);
+  std::cout << "npages,bitmap-allocate,bitmap-free,bsd-allocate,bsd-free,linux-allocate,linux-free" << std::endl;
+  for(int p = 0; p <= 22; ++p) {
+    size_t npages = pow(2, p);
+    std::cout << npages << std::flush;
+    {
+      BitmapAllocator bitmapall(npages);
+      test_allocator(bitmapall, npages);
+    }
+    {
+      BSDAllocator bsdall(npages);
+      test_allocator(bsdall, npages);
+    }
+    {
+      LinuxAllocator linuxall(npages);
+      test_allocator(linuxall, npages);
+    }
+    std::cout << std::endl;
   }
   return 0;
 }
