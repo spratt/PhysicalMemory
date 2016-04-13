@@ -3,13 +3,20 @@
 #include <iomanip>
 #include <vector>
 #include <chrono>
+#include <random>
+
 #include <cstdlib>
+
 #include "bsd_allocator.hpp"
 #include "linux_allocator.hpp"
 #include "bitmap_allocator.hpp"
 
 void test_allocator(FrameAllocator& all, size_t NPAGES) {
   const size_t trials = 30;
+
+  std::random_device device;
+  std::mt19937 generator(device());
+  std::uniform_int_distribution<size_t> dist(0, NPAGES);
 
   std::vector<Page*> allocs;
   
@@ -18,29 +25,31 @@ void test_allocator(FrameAllocator& all, size_t NPAGES) {
     // Init
     all.init();
 
-    // alloc
-    auto start = std::chrono::high_resolution_clock::now();
     for(size_t i = 0; i < NPAGES; ++i) {
-      try {
-        allocs.push_back(&all.alloc());
-      } catch(std::string s) {
-        std::cout << s << std::endl;
-        exit(-1);
+      size_t r = dist(generator);
+
+      // Free
+      if(r < allocs.size()) {
+        auto start = std::chrono::high_resolution_clock::now();
+        all.free(*allocs.back());
+        allocs.pop_back();
+        auto end = std::chrono::high_resolution_clock::now();
+        auto diff = end - start;
+        total_free += diff.count();
+      } else { // alloc
+        auto start = std::chrono::high_resolution_clock::now();
+        allocs.push_back(&all.alloc());      
+        auto end = std::chrono::high_resolution_clock::now();
+        auto diff = end - start;
+        total_alloc += diff.count();
       }
     }
-    auto end = std::chrono::high_resolution_clock::now();
-    auto diff = end - start;
-    total_alloc += diff.count();
 
-    // Free
-    start = std::chrono::high_resolution_clock::now();
+    // Free all frames
     while(allocs.size() > 0) {
       all.free(*allocs.back());
-      allocs.pop_back();
+      allocs.pop_back();      
     }
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    total_free += diff.count();
   }
   double total_trials = NPAGES * trials;
   std::cout << std::setprecision(2) << std::fixed

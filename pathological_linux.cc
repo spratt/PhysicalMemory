@@ -11,36 +11,26 @@
 void test_allocator(FrameAllocator& all, size_t NPAGES) {
   const size_t trials = 30;
 
-  std::vector<Page*> allocs;
-  
   double total_alloc = 0.0, total_free = 0.0;
   for(size_t trial = 0; trial < trials; ++trial) {
     // Init
     all.init();
 
-    // alloc
-    auto start = std::chrono::high_resolution_clock::now();
     for(size_t i = 0; i < NPAGES; ++i) {
-      try {
-        allocs.push_back(&all.alloc());
-      } catch(std::string s) {
-        std::cout << s << std::endl;
-        exit(-1);
-      }
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    auto diff = end - start;
-    total_alloc += diff.count();
+      // alloc
+      auto start = std::chrono::high_resolution_clock::now();
+      Page& p = all.alloc();
+      auto end = std::chrono::high_resolution_clock::now();
+      auto diff = end - start;
+      total_alloc += diff.count();
 
-    // Free
-    start = std::chrono::high_resolution_clock::now();
-    while(allocs.size() > 0) {
-      all.free(*allocs.back());
-      allocs.pop_back();
+      // Free
+      start = std::chrono::high_resolution_clock::now();
+      all.free(p);
+      end = std::chrono::high_resolution_clock::now();
+      diff = end - start;
+      total_free += diff.count();
     }
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    total_free += diff.count();
   }
   double total_trials = NPAGES * trials;
   std::cout << std::setprecision(2) << std::fixed

@@ -3,7 +3,9 @@
 #include <iomanip>
 #include <vector>
 #include <chrono>
+
 #include <cstdlib>
+
 #include "bsd_allocator.hpp"
 #include "linux_allocator.hpp"
 #include "bitmap_allocator.hpp"
@@ -18,29 +20,28 @@ void test_allocator(FrameAllocator& all, size_t NPAGES) {
     // Init
     all.init();
 
-    // alloc
-    auto start = std::chrono::high_resolution_clock::now();
     for(size_t i = 0; i < NPAGES; ++i) {
-      try {
-        allocs.push_back(&all.alloc());
-      } catch(std::string s) {
-        std::cout << s << std::endl;
-        exit(-1);
-      }
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    auto diff = end - start;
-    total_alloc += diff.count();
-
-    // Free
-    start = std::chrono::high_resolution_clock::now();
-    while(allocs.size() > 0) {
+      // Free
+      auto start = std::chrono::high_resolution_clock::now();
       all.free(*allocs.back());
       allocs.pop_back();
+      auto end = std::chrono::high_resolution_clock::now();
+      auto diff = end - start;
+      total_free += diff.count();
+      
+      // alloc
+      start = std::chrono::high_resolution_clock::now();
+      allocs.push_back(&all.alloc());      
+      end = std::chrono::high_resolution_clock::now();
+      diff = end - start;
+      total_alloc += diff.count();
     }
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    total_free += diff.count();
+
+    // Free all frames
+    while(allocs.size() > 0) {
+      all.free(*allocs.back());
+      allocs.pop_back();      
+    }
   }
   double total_trials = NPAGES * trials;
   std::cout << std::setprecision(2) << std::fixed
